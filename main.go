@@ -63,7 +63,7 @@ func generateAESKey() ([]byte, error) {
 	key := make([]byte, 32) // создание 256 битного ключа для AES
 	_, err := rand.Read(key) // генерация случайных байтов для ключа
 	if err != nil {
-		return nil, fmt.Errorf("AES key generation error: %v", err)
+		return nil, fmt.Errorf("Ошибка генерации ключа AES: %v", err)
 	}
 	return key, nil // возвращаем сгенерированный ключ
 }
@@ -93,13 +93,13 @@ func pkcs7Padding(data []byte, blockSize int) []byte {
 func pkcs7Unpadding(data []byte) ([]byte, error) {
 	length := len(data) // получение длины данных
 	if length == 0 { // если данные пусты - ошибка
-		return nil, fmt.Errorf("data is empty")
+		return nil, fmt.Errorf("Данные пусты")
 	}
 	/*последний байт в данных должен содержать значение,
 	которое указывает на количество байтов, добавленных для паддинга:*/
 	padding := int(data[length-1]) // количество паддинга
 	if padding > length {
-		return nil, fmt.Errorf("invalid padding")
+		return nil, fmt.Errorf("Недопустимый padding")
 	}
 	return data[:length-padding], nil // удаление паддинга (обрезая последние байты) и возвращение данных
 }
@@ -109,13 +109,13 @@ func pkcs7Unpadding(data []byte) ([]byte, error) {
 func encryptAES(plaintext string, key []byte) (string, error) {
 	block, err := aes.NewCipher(key) // создание нового AES шифратора с заданным ключом
 	if err != nil {
-		return "", fmt.Errorf("AES cipher creation error: %v", err)
+		return "", fmt.Errorf("Ошибка создания шифра AES: %v", err)
 	}
 // создание вектора инициализации (предотвращает повторение шифрования данных):
 	iv := make([]byte, aes.BlockSize)
 	if _, err := io.ReadFull(rand.Reader, iv);
 	err != nil {
-		return "", fmt.Errorf("IV generation error: %v", err)
+		return "", fmt.Errorf("Ошибка генерации IV: %v", err)
 	}
 
 	// добавление соли к данным перед шифрованием
@@ -139,12 +139,12 @@ func decryptAES(ciphertextHex string, key []byte) (string, error) {
 	// декодирование зашифрованных данных из hex
 	ciphertext, err := hex.DecodeString(ciphertextHex)
 	if err != nil {
-		return "", fmt.Errorf("HEX decoding error: %v", err)
+		return "", fmt.Errorf("Ошибка деводирования HEX: %v", err)
 	}
 // создание нового aes шифратора
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", fmt.Errorf("AES cipher creation error: %v", err)
+		return "", fmt.Errorf("Ошибка создания шифра AES: %v", err)
 	}
 // извлечение вектора инициализации
 	iv := ciphertext[:aes.BlockSize]
@@ -155,7 +155,7 @@ func decryptAES(ciphertextHex string, key []byte) (string, error) {
 
 	unpaddedData, err := pkcs7Unpadding(ciphertext) // удаление паддинга
 	if err != nil {
-		return "", fmt.Errorf("Padding removal error: %v", err)
+		return "", fmt.Errorf("Ошибка удаления padding: %v", err)
 	}
 
 	// Удаляем соль из расшифрованных данных
@@ -173,12 +173,12 @@ func EncryptTxtFileWithAES(content []byte, totalParts, neededParts int) (string,
 
 	encryptedMessage, err := encryptAES(string(content), aesKey)
 	if err != nil {
-		return "", "", fmt.Errorf("Encryption error: %v", err)
+		return "", "", fmt.Errorf("Ошибка шифрования: %v", err)
 	}
 
 	shares, err := shamir.Split(aesKey, totalParts, neededParts)
 	if err != nil {
-		return "", "", fmt.Errorf("Key splitting error: %v", err)
+		return "", "", fmt.Errorf("Ошибка разделения ключа: %v", err)
 	}
 
 	var keys string
@@ -211,13 +211,13 @@ func DecryptEncFileWithAES(encryptedMessageHex string, keysInput []string) (stri
 	for _, keyInput := range keysInput {
 		parts := strings.Split(keyInput, ":") // разбиение строки на части по символу :
 		if len(parts) != 3 {
-			fmt.Println("Invalid key format.")
+			fmt.Println("Неверный формат ключа.")
 			continue
 		}
 
 		shareHex, checksum, partsStr := parts[0], parts[1], parts[2]
 		if generateChecksum(shareHex) != checksum {
-			fmt.Println("Error: checksum mismatch.")
+			fmt.Println("Ошибка: несоответствие контрольной суммы.")
 			continue
 		}
 
@@ -232,12 +232,12 @@ func DecryptEncFileWithAES(encryptedMessageHex string, keysInput []string) (stri
 // восстанавление исходного AES-ключа из частей с помощью схемы Шамира
 	aesKey, err := shamir.Combine(keys)
 	if err != nil {
-		return "", fmt.Errorf("AES key recovery error: %v", err)
+		return "", fmt.Errorf("Ошибка восстановления ключа AES: %v", err)
 	}
 // расшифровка данных с использованием восстановленного AES ключа
 	plaintext, err := decryptAES(encryptedMessageHex, aesKey)
 	if err != nil {
-		return "", fmt.Errorf("Decryption error: %v", err)
+		return "", fmt.Errorf("Ошибка расшифровки: %v", err)
 	}
 
 	return plaintext, nil // возвращение расшифрованных данных
@@ -250,31 +250,31 @@ func UploadTxtFile(w http.ResponseWriter, r *http.Request) {
 // чтение значения "totalParts" из формы и преобразование в целое число
 	totalParts, err := strconv.Atoi(r.FormValue("totalParts"))
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid totalParts value")
+		writeJSONError(w, http.StatusBadRequest, "Неверное значение общего количества частей")
 		return
 	}
 	neededParts, err := strconv.Atoi(r.FormValue("neededParts"))
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid neededParts value")
+		writeJSONError(w, http.StatusBadRequest, "Неверное количество нужных частей ключа")
 		return
 	}
 // чтение файла из формы с ключом "file"
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Failed to get file")
+		writeJSONError(w, http.StatusBadRequest, "Не удалось получить файл")
 		return
 	}
 	defer file.Close() // после работы закрываем файл
 // Чтение содержимого файла в байтовый срез
 	fileContent, err := io.ReadAll(file)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to read file")
+		writeJSONError(w, http.StatusInternalServerError, "Не удалось прочитать файл")
 		return
 	}
 // Шифрование содержимого файла с использованием AES и схемы Шамира для ключа
 	encMessage, keys, err := EncryptTxtFileWithAES(fileContent, totalParts, neededParts)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Encryption failed")
+		writeJSONError(w, http.StatusInternalServerError, "Шифрование не удалось")
 		return
 	}
 // установление заголовка ответа, что контент будет в формате JSON
@@ -294,27 +294,27 @@ func UploadEncFile(w http.ResponseWriter, r *http.Request) {
 // чтение ключей из формы. В поле keys ожидается строка с ключами
 	keysValue := r.FormValue("keys")
 	if keysValue == "" {
-		writeJSONError(w, http.StatusBadRequest, "No keys provided")
+		writeJSONError(w, http.StatusBadRequest, "Ключи не предоставлены")
 		return
 	}
 	keys := strings.Split(keysValue, "\n") // деление ключа на части
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Failed to get file")
+		writeJSONError(w, http.StatusBadRequest, "Не удалось получить файл")
 		return
 	}
 	defer file.Close()
 
 	content, err := io.ReadAll(file) // чтение данных щашифрованного файла
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to read file")
+		writeJSONError(w, http.StatusInternalServerError, "Не удалось прочитать файл")
 		return
 	}
 // расшифровка зашифрованных данных с использованием ключей
 	decMessage, err := DecryptEncFileWithAES(string(content), keys)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Decryption failed")
+		writeJSONError(w, http.StatusInternalServerError, "Не удалось расшифровать")
 		return
 	}
 
