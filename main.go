@@ -16,7 +16,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/hashicorp/vault/shamir" // алгоритм схемы разделения секрета Шамира
+	"vault/shamir" // алгоритм схемы разделения секрета Шамира
 )
 
 // writeJSONError - функция для отправки ответов об ошибках в json. (net/http)
